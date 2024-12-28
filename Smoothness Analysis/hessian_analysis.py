@@ -117,7 +117,7 @@ parser.add_argument('--target_label', type=int, default=0, help='class of target
 parser.add_argument('--target_type', type=str, default='all2one', help='type of backdoor label')
 parser.add_argument('--trig_w', type=int, default=3, help='width of trigger pattern')
 parser.add_argument('--trig_h', type=int, default=3, help='height of trigger pattern')
-parser.add_argument('--data-dir',   type=str, default='./dataset', help='dir to the dataset')
+parser.add_argument('--data-dir',   type=str, default='../data', help='dir to the dataset')
 parser.add_argument('--output-dir', type=str, default='logs/models/')
 parser.add_argument('--save_file', type=str, default='eigenvalues.npz')
 parser.add_argument('--ACC', type=float, default=95.21, help='width of trigger pattern')

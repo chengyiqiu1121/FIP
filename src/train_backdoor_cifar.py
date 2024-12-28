@@ -33,7 +33,7 @@ parser.add_argument('--checkpoint', type=str, help='The checkpoint to be pruned'
 
 ## Backdoor Parameters
 parser.add_argument('--clb-dir', type=str, default='', help='dir to training data under clean label attack')
-parser.add_argument('--poison-type', type=str, default='badnets', choices=['badnets', 'FC',  'SIG', 'Dynamic', 'TrojanNet', 'blend', 'CLB', 'benign'],
+parser.add_argument('--poison-type', type=str, default='badnets', choices=['badnets', 'FC',  'SIG', 'Dynamic', 'TrojanNet', 'blend', 'CLB', 'benign', "phase"],
                     help='type of backdoor attacks used during training')
 parser.add_argument('--poison-rate', type=float, default=0.10, help='proportion of poison examples in the training set')
 parser.add_argument('--poison-target', type=int, default=0, help='target class of backdoor attack')
@@ -66,7 +66,7 @@ args_dict = vars(args)
 os.makedirs(args.output_dir, exist_ok=True)
 random.seed(args.seed)
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-# torch.cuda.set_device(args.gpuid)
+torch.cuda.set_device(args.gpuid)
 
 
 def main():    
@@ -128,6 +128,54 @@ def main():
         poison_train_loader = DataLoader(poison_train, batch_size=args.batch_size, shuffle=True, num_workers=4)
         poison_test_loader  = DataLoader(poison_test, batch_size=args.batch_size, num_workers=4)
         clean_test_loader   = DataLoader(clean_test, batch_size=args.batch_size, num_workers=4)
+    elif args.poison_type in ['phase']:
+        import sys
+        sys.path.append('../../../')
+        from tools.dataset import get_dataloader, get_train_and_test_dataset, PoisonDataset
+        _, clean_test_loader = get_dataloader('cifar10', args.batch_size, False, 4)
+
+        train_ds, test_ds = get_train_and_test_dataset('cifar10')
+        class Config:
+            pass
+        config = Config()
+        attack_config = Config()
+        attack_config.__dict__ = {
+                'name': 'phase',
+                'mode': 'train',
+                'ch_list': [1],
+                'window_size': 4,
+                'trigger_size': 2,
+                'phase_trigger': -1,
+                'dwt_level': 1,
+                'dwt_wave': 'db2',
+                'LL': 1,
+                'LH': 0,
+                'HL': 0,
+                'HH': 1,
+                'mix': -1,
+                'mask_coef': 0.4,
+            }
+        config.__dict__ = {
+            'dataset_name': "cifar10",
+            'enhance': 0.1,
+            'ratio': 0.1,
+            'target_label': 0,
+            "attack": attack_config,
+        }
+        config_test = Config()
+        config_test.__dict__ = {
+            'dataset_name': "cifar10",
+            'enhance': 0.1,
+            'ratio': 1,
+            'target_label': 0,
+            "attack": attack_config,
+        }
+        trigger_info = None
+        poison_train_ds = PoisonDataset(train_ds, config)
+        poison_test_ds = PoisonDataset(test_ds, config_test)
+        poison_train_loader = DataLoader(poison_train_ds, batch_size=args.batch_size, shuffle=True, num_workers=4)
+        poison_test_loader = DataLoader(poison_test_ds, batch_size=args.batch_size, shuffle=False, num_workers=4)
+
 
     elif args.poison_type in ['Dynamic']:
         transform_train = transforms.Compose([
@@ -224,7 +272,7 @@ def main():
 
         ## Save after couple of epochs
         if (epoch + 1) % args.save_every == 0:
-            torch.save(net.state_dict(), os.path.join(args.output_dir, 'model_{}_{}.th'.format(epoch, args.inject_portion)))
+            torch.save(net.state_dict(), os.path.join(args.output_dir, 'model_{}_{}.th'.format(epoch, args.poison_rate * 100)))
 
         elif po_test_acc>=best_poison_acc and cl_test_acc>=best_clean_acc:
             best_poison_acc = po_test_acc
@@ -232,7 +280,7 @@ def main():
             torch.save(net.state_dict(), os.path.join(args.output_dir, 'model_{}.th'.format(args.poison_type)))
 
     # Save the last checkpoint
-    torch.save(net.state_dict(), os.path.join(args.output_dir, 'model_last' + str(args.inject_portion) + '.th'))
+    torch.save(net.state_dict(), os.path.join(args.output_dir, 'model_last' + str(args.poison_rate * 100) + '.th'))
 
 ### anp function
 def load_state_dict(net, orig_state_dict):

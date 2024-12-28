@@ -319,7 +319,7 @@ if __name__ == '__main__':
     parser.add_argument('--alpha', type=float, default=0.8, help='Search area design Parameter')
     parser.add_argument('--beta', type=float, default=0.5, help='Search area design Parameter')
     parser.add_argument('--num_classes', type=float, default=10, help='Number of classes')
-    parser.add_argument("--reg_F", default=0.5, type=float, help="CDA Regularizer Coefficient, eta_F")
+    parser.add_argument("--reg_F", default=1e-3, type=float, help="CDA Regularizer Coefficient, eta_F")
 
     # Linear Transformation
     MEAN_CIFAR10 = (0.4914, 0.4822, 0.4465)
